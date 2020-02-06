@@ -85,6 +85,7 @@ public:
 		int amount;
 		int passed;
 		int invalid_by_dir;
+		Vector2 best_normal;
 		Vector2 *ptr;
 	};
 

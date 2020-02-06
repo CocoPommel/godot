@@ -167,12 +167,14 @@ void Physics2DServerSW::_shape_col_cbk(const Vector2 &p_point_A, const Vector2 &
 	if (cbk->max == 0)
 		return;
 
+	Vector2 rel_dir = (p_point_A - p_point_B).normalized();
+	cbk->best_normal = -rel_dir; // negate for consistency with _RestCallbackData2D.best_normal
+
 	if (cbk->valid_dir != Vector2()) {
 		if (p_point_A.distance_squared_to(p_point_B) > cbk->valid_depth * cbk->valid_depth) {
 			cbk->invalid_by_dir++;
 			return;
 		}
-		Vector2 rel_dir = (p_point_A - p_point_B).normalized();
 
 		if (cbk->valid_dir.dot(rel_dir) < Math_SQRT12) { //sqrt(2)/2.0 - 45 degrees
 			cbk->invalid_by_dir++;

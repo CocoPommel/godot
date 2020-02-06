@@ -736,7 +736,8 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 	ExcludedShapeSW excluded_shape_pairs[max_excluded_shape_pairs];
 	int excluded_shape_pair_count = 0;
 
-	float separation_margin = MIN(p_margin, MAX(0.0, p_motion.length() - CMP_EPSILON)); //don't separate by more than the intended motion
+	float pmotion_len = p_motion.length(); // we'll use this more than once, so precompute it
+	float separation_margin = MIN(p_margin, MAX(0.0, pmotion_len - CMP_EPSILON)); //don't separate by more than the intended motion
 
 	Transform2D body_transform = p_from;
 
@@ -816,10 +817,19 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 
 					int current_passed = cbk.passed; //save how many points passed collision
 					bool did_collide = false;
+					bool motion_is_parallel = false;
 
 					Shape2DSW *against_shape = col_obj->get_shape(shape_idx);
 					if (CollisionSolver2DSW::solve(body_shape, body_shape_xform, Vector2(), against_shape, col_obj_shape_xform, Vector2(), cbkres, cbkptr, NULL, separation_margin)) {
-						did_collide = cbk.passed > current_passed; //more passed, so collision actually existed
+						motion_is_parallel = (p_motion != Vector2()) && (fabsf(cbk.best_normal.dot(p_motion)) < (CMP_EPSILON * pmotion_len)); // multiplying by pmotion_len on the right is faster than normalizing p_motion on the left
+						if (cbk.passed > current_passed) { // more passed, so collision actually existed
+							if (!motion_is_parallel) { // if a shape is moving horizontally across a floor or vertically against a wall, don't knock them out of the floor or wall
+								did_collide = true;
+							} else {
+								cbk.amount--; // if the collision was parallel to motion, don't consider it when applying recover_motion
+							}
+						}
+						//did_collide = (cbk.passed > current_passed) && !motion_is_perpendicular; //more passed, so collision actually existed, and motion isn't perpendicular to the other shape
 					}
 
 					if (!did_collide && cbk.invalid_by_dir > 0) {
